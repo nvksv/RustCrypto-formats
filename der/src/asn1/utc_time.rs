@@ -85,7 +85,7 @@ impl<'a> DecodeValue<'a> for UtcTime {
     type Error = Error;
 
     fn decode_value<R: Reader<'a>>(reader: &mut R, header: Header) -> Result<Self> {
-        if Self::LENGTH != usize::try_from(header.length)? {
+        if Self::LENGTH != usize::try_from(header.length())? {
             return Err(reader.error(Self::TAG.value_error()));
         }
 
@@ -252,8 +252,8 @@ mod tests {
         assert_eq!(utc_time.to_unix_duration().as_secs(), 673573540);
 
         let mut buf = [0u8; 128];
-        let mut encoder = SliceWriter::new(&mut buf);
-        utc_time.encode(&mut encoder).unwrap();
-        assert_eq!(example_bytes, encoder.finish().unwrap());
+        let mut writer = SliceWriter::new(&mut buf);
+        utc_time.encode(&mut writer).unwrap();
+        assert_eq!(example_bytes, writer.finish().unwrap());
     }
 }

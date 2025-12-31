@@ -20,6 +20,9 @@ use crate::length::indefinite::read_eoc;
 
 /// Reader trait which reads DER-encoded input.
 pub trait Reader<'r>: Clone {
+    /// Does this reader support the `read_slice` method? (i.e. can it borrow from his input?)
+    const CAN_READ_SLICE: bool;
+
     /// Get the [`EncodingRules`] which should be applied when decoding the input.
     fn encoding_rules(&self) -> EncodingRules;
 
@@ -194,7 +197,7 @@ pub trait Reader<'r>: Clone {
         E: From<Error>,
     {
         let header = Header::decode(self)?;
-        header.tag.assert_eq(Tag::Sequence)?;
+        header.tag().assert_eq(Tag::Sequence)?;
         read_value(self, header, |r, _| f(r))
     }
 
@@ -202,7 +205,7 @@ pub trait Reader<'r>: Clone {
     fn tlv_bytes(&mut self) -> Result<&'r [u8], Error> {
         let header = Header::peek(self)?;
         let header_len = header.encoded_len()?;
-        self.read_slice((header_len + header.length)?)
+        self.read_slice((header_len + header.length())?)
     }
 }
 
@@ -217,16 +220,13 @@ where
     F: FnOnce(&mut R, Header) -> Result<T, E>,
 {
     #[cfg(feature = "ber")]
-    let header = Header {
-        length: header.length.sans_eoc(),
-        tag: header.tag,
-    };
+    let header = header.with_length(header.length().sans_eoc());
 
-    let ret = reader.read_nested(header.length, |r| f(r, header))?;
+    let ret = reader.read_nested(header.length(), |r| f(r, header))?;
 
     // Consume EOC marker if the length is indefinite.
     #[cfg(feature = "ber")]
-    if header.length.is_indefinite() {
+    if header.length().is_indefinite() {
         read_eoc(reader)?;
     }
 

@@ -4,7 +4,8 @@
 [![Docs][docs-image]][docs-link]
 [![Build Status][build-image]][build-link]
 ![Apache 2.0/MIT Licensed][license-image]
-![MSRV][msrv-image]
+![Rust Version][rustc-image]
+[![Project Chat][chat-image]][chat-link]
 
 Constant-time serde serializer/deserializer helpers for data that potentially
 contains secrets (e.g. cryptographic keys)
@@ -31,13 +32,19 @@ using a constant-time hex serialization with human-readable formats should
 help reduce the overall timing variability.
 
 `serdect` is tested against the following crates:
-- [`bincode`](https://crates.io/crates/bincode) v1
+- [`bincode`](https://crates.io/crates/bincode) v2
 - [`ciborium`](https://crates.io/crates/ciborium) v0.2
 - [`rmp-serde`](https://crates.io/crates/rmp-serde) v1
 - [`serde-json-core`](https://crates.io/crates/serde-json-core) v0.5
 - [`serde-json`](https://crates.io/crates/serde-json) v1
-- [`toml`](https://crates.io/crates/toml) v0.7
+- [`toml`](https://crates.io/crates/toml) v0.8
 
+## Minimum Supported Rust Version (MSRV) Policy
+
+MSRV increases are not considered breaking changes and can happen in patch releases.
+
+The crate MSRV accounts for all supported targets and crate feature combinations, excluding
+explicitly unstable features.
 
 ## License
 
@@ -60,10 +67,12 @@ dual licensed as above, without any additional terms or conditions.
 [crate-link]: https://crates.io/crates/serdect
 [docs-image]: https://docs.rs/serdect/badge.svg
 [docs-link]: https://docs.rs/serdect/
-[license-image]: https://img.shields.io/badge/license-Apache2.0/MIT-blue.svg
-[msrv-image]: https://img.shields.io/badge/rustc-1.85+-blue.svg
 [build-image]: https://github.com/RustCrypto/formats/actions/workflows/serdect.yml/badge.svg
 [build-link]: https://github.com/RustCrypto/formats/actions/workflows/serdect.yml
+[license-image]: https://img.shields.io/badge/license-Apache2.0/MIT-blue.svg
+[rustc-image]: https://img.shields.io/badge/rustc-1.85+-blue.svg
+[chat-image]: https://img.shields.io/badge/zulip-join_chat-blue.svg
+[chat-link]: https://rustcrypto.zulipchat.com/#narrow/stream/300570-formats
 
 [//]: # (general links)
 

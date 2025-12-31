@@ -22,7 +22,7 @@ macro_rules! impl_encoding_traits {
                     const UNSIGNED_HEADROOM: usize = 1;
 
                     let mut buf = [0u8; (Self::BITS as usize / 8) + UNSIGNED_HEADROOM];
-                    let max_length = u32::from(header.length) as usize;
+                    let max_length = u32::from(header.length()) as usize;
 
                     if max_length == 0 {
                         return Err(reader.error(Tag::Integer.length_error()));
@@ -36,7 +36,7 @@ macro_rules! impl_encoding_traits {
                     let result = Self::from_be_bytes(decode_to_array(bytes)?);
 
                     // Ensure we compute the same encoded length as the original any value
-                    if header.length != result.value_len()? {
+                    if header.length() != result.value_len()? {
                         return Err(reader.error(Self::TAG.non_canonical_error()));
                     }
 
@@ -126,7 +126,7 @@ impl<'a> DecodeValue<'a> for UintRef<'a> {
         let result = Self::new(decode_to_slice(bytes)?)?;
 
         // Ensure we compute the same encoded length as the original any value.
-        if result.value_len()? != header.length {
+        if result.value_len()? != header.length() {
             return Err(reader.error(Self::TAG.non_canonical_error()));
         }
 
@@ -221,7 +221,7 @@ mod allocating {
             let result = Self::new(decode_to_slice(bytes.as_slice())?)?;
 
             // Ensure we compute the same encoded length as the original any value.
-            if result.value_len()? != header.length {
+            if result.value_len()? != header.length() {
                 return Err(reader.error(Self::TAG.non_canonical_error()));
             }
 
@@ -353,17 +353,17 @@ pub(super) fn decode_to_array<const N: usize>(bytes: &[u8]) -> Result<[u8; N]> {
 }
 
 /// Encode the given big endian bytes representing an integer as ASN.1 DER.
-pub(crate) fn encode_bytes<W>(encoder: &mut W, bytes: &[u8]) -> Result<()>
+pub(crate) fn encode_bytes<W>(writer: &mut W, bytes: &[u8]) -> Result<()>
 where
     W: Writer + ?Sized,
 {
     let bytes = strip_leading_zeroes(bytes);
 
     if needs_leading_zero(bytes) {
-        encoder.write_byte(0)?;
+        writer.write_byte(0)?;
     }
 
-    encoder.write(bytes)
+    writer.write(bytes)
 }
 
 /// Get the encoded length for the given unsigned integer serialized as bytes.
@@ -459,10 +459,10 @@ mod tests {
             let uint = UintRef::from_der(example).unwrap();
 
             let mut buf = [0u8; 128];
-            let mut encoder = SliceWriter::new(&mut buf);
-            uint.encode(&mut encoder).unwrap();
+            let mut writer = SliceWriter::new(&mut buf);
+            uint.encode(&mut writer).unwrap();
 
-            let result = encoder.finish().unwrap();
+            let result = writer.finish().unwrap();
             assert_eq!(example, result);
         }
     }

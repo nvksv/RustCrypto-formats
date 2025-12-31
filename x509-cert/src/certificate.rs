@@ -87,8 +87,10 @@ impl Profile for Raw {
 #[derive(Clone, Debug, Copy, PartialEq, Eq, Enumerated)]
 #[asn1(type = "INTEGER")]
 #[repr(u8)]
+#[derive(Default)]
 pub enum Version {
     /// Version 1 (default)
+    #[default]
     V1 = 0,
 
     /// Version 2
@@ -101,12 +103,6 @@ pub enum Version {
 impl ValueOrd for Version {
     fn value_cmp(&self, other: &Self) -> der::Result<Ordering> {
         (*self as u8).value_cmp(&(*other as u8))
-    }
-}
-
-impl Default for Version {
-    fn default() -> Self {
-        Self::V1
     }
 }
 
@@ -411,7 +407,7 @@ impl<P: Profile> CertificateInner<P> {
             }
         }
 
-        while position < input.len() - 1 {
+        while position + 1 < input.len() {
             let rest = &input[position..];
             let end_pos = find_boundary(rest, end_boundary)
                 .ok_or(pem::Error::PostEncapsulationBoundary)?
@@ -433,7 +429,7 @@ impl<P> CertificateInner<P>
 where
     P: Profile,
 {
-    /// Return the hash of the DER serialization of this cetificate
+    /// Return the hash of the DER serialization of this certificate
     pub fn hash<D>(&self) -> der::Result<Output<D>>
     where
         D: Digest,

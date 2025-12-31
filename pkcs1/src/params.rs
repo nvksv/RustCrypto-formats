@@ -25,15 +25,11 @@ const SHA_1_AI: AlgorithmIdentifierRef<'_> = AlgorithmIdentifierRef {
 /// [RFC 8017 Appendix 2.3]: https://datatracker.ietf.org/doc/html/rfc8017#appendix-A.2.3
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
 #[repr(u8)]
+#[derive(Default)]
 pub enum TrailerField {
     /// the only supported value (0xbc, default)
+    #[default]
     BC = 1,
-}
-
-impl Default for TrailerField {
-    fn default() -> Self {
-        Self::BC
-    }
 }
 
 impl<'a> DecodeValue<'a> for TrailerField {
@@ -288,7 +284,7 @@ impl<'a> RsaOaepParams<'a> {
                     parameters: Some(AnyRef::NULL),
                 }),
             },
-            p_source: pspecicied_algorithm_identifier(label),
+            p_source: pspecified_algorithm_identifier(label),
         }
     }
 
@@ -386,7 +382,7 @@ impl<'a> TryFrom<&'a [u8]> for RsaOaepParams<'a> {
     }
 }
 
-fn pspecicied_algorithm_identifier(label: &impl AsRef<[u8]>) -> AlgorithmIdentifierRef<'_> {
+fn pspecified_algorithm_identifier(label: &impl AsRef<[u8]>) -> AlgorithmIdentifierRef<'_> {
     AlgorithmIdentifierRef {
         oid: OID_PSPECIFIED,
         parameters: Some(
@@ -397,5 +393,5 @@ fn pspecicied_algorithm_identifier(label: &impl AsRef<[u8]>) -> AlgorithmIdentif
 
 /// Default Source Algorithm, empty string
 fn default_pempty_string<'a>() -> AlgorithmIdentifierRef<'a> {
-    pspecicied_algorithm_identifier(&[])
+    pspecified_algorithm_identifier(&[])
 }

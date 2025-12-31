@@ -28,7 +28,7 @@ use core::fmt;
 use core::marker::PhantomData;
 use der::asn1::{BitString, Null, OctetString, OctetStringRef, SetOfVec};
 use der::oid::db::DB;
-use der::{Any, AnyRef, DateTime, Decode, Encode, ErrorKind, Tag};
+use der::{Any, AnyRef, Decode, Encode, ErrorKind, Tag};
 use digest::Digest;
 use rsa::Pkcs1v15Encrypt;
 use sha2::digest;
@@ -39,10 +39,12 @@ use spki::{
     AlgorithmIdentifierOwned, DynSignatureAlgorithmIdentifier, EncodePublicKey,
     SignatureBitStringEncoding,
 };
-use std::time::SystemTime;
 use std::vec;
-use x509_cert::attr::{Attribute, AttributeValue, Attributes};
-use x509_cert::builder::{self, AsyncBuilder, Builder};
+use x509_cert::{
+    attr::{Attribute, AttributeValue, Attributes},
+    builder::{self, AsyncBuilder, Builder},
+    time::Time,
+};
 use zeroize::Zeroize;
 
 // Modules
@@ -252,8 +254,17 @@ impl Builder for SignerInfoBuilder<'_> {
                 attr.oid.cmp(&const_oid::db::rfc5911::ID_CONTENT_TYPE) == Ordering::Equal
             });
             if let Some(signed_attributes_content_type) = signed_attributes_content_type {
+                if signed_attributes_content_type.values.len() != 1 {
+                    return Err(der::Error::from(ErrorKind::Failed).into());
+                }
+                let Some(value) = signed_attributes_content_type.values.get(0) else {
+                    return Err(der::Error::from(ErrorKind::Failed).into());
+                };
+
+                let value = value.decode_as::<ObjectIdentifier>()?;
+
                 // Check against `eContentType`
-                if signed_attributes_content_type.oid != econtent_type {
+                if value != econtent_type {
                     // Mismatch between content types: encapsulated content info <-> signed attributes.
                     return Err(der::Error::from(ErrorKind::Failed).into());
                 }
@@ -1261,20 +1272,7 @@ pub fn create_message_digest_attribute(message_digest: &[u8]) -> Result<Attribut
 /// encoded as UTCTime.  Any dates with year values before 1950 or after
 /// 2049 MUST be encoded as GeneralizedTime.
 pub fn create_signing_time_attribute() -> Result<Attribute> {
-    let now = DateTime::from_system_time(SystemTime::now())?;
-    let tag = if now.year() < 1950 || now.year() > 2049 {
-        Tag::GeneralizedTime
-    } else {
-        Tag::UtcTime
-    };
-    // let mut signing_time_buf = Vec::new();
-    let time_der = if tag == Tag::GeneralizedTime {
-        // der::asn1::GeneralizedTime::from_date_time(now).encode_to_vec(&mut signing_time_buf)?;
-        der::asn1::GeneralizedTime::from_date_time(now).to_der()?
-    } else {
-        // der::asn1::UtcTime::from_date_time(now)?.encode_to_vec(&mut signing_time_buf)?;
-        der::asn1::UtcTime::from_date_time(now)?.to_der()?
-    };
+    let time_der = Time::now()?.to_der()?;
     let signing_time_attribute_value = AttributeValue::from_der(&time_der)?;
     let mut values = SetOfVec::<AttributeValue>::new();
     values.insert(signing_time_attribute_value)?;

@@ -7,22 +7,75 @@ use crate::{Decode, DerOrd, Encode, Error, ErrorKind, Length, Reader, Result, Ta
 use core::cmp::Ordering;
 
 /// ASN.1 DER headers: tag + length component of TLV-encoded values
+///
+///
+/// ## Examples
+/// ```
+/// use der::{Decode, Header, Length, Reader, SliceReader, Tag};
+///
+/// let mut reader = SliceReader::new(&[0x04, 0x02, 0x31, 0x32]).unwrap();
+/// let header = Header::decode(&mut reader).expect("valid header");
+///
+/// assert_eq!(header, Header::new(Tag::OctetString, Length::new(2)));
+///
+/// assert_eq!(reader.read_slice(2u8.into()).unwrap(), b"12");
+/// ```
+///
+/// ```
+/// use der::{Encode, Header, Length, Tag};
+/// let header = Header::new(Tag::Sequence, Length::new(256));
+///
+/// // Header of 256-byte SEQUENCE is 4-byte long
+/// assert_eq!(header.encoded_len(), Ok(Length::new(4)));
+/// ```
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Header {
     /// Tag representing the type of the encoded value
-    pub tag: Tag,
+    tag: Tag,
 
     /// Length of the encoded value
-    pub length: Length,
+    length: Length,
+
+    /// True if value is constructed, rather than primitive
+    constructed: bool,
 }
 
 impl Header {
-    /// Create a new [`Header`] from a [`Tag`] and a specified length.
-    ///
-    /// Returns an error if the length exceeds the limits of [`Length`].
-    pub fn new(tag: Tag, length: impl TryInto<Length>) -> Result<Self> {
-        let length = length.try_into().map_err(|_| ErrorKind::Overflow)?;
-        Ok(Self { tag, length })
+    /// Create a new [`Header`] from a [`Tag`] and a [`Length`].
+    pub fn new(tag: Tag, length: Length) -> Self {
+        #[cfg(feature = "ber")]
+        let constructed = tag.is_constructed() || length.is_indefinite();
+        #[cfg(not(feature = "ber"))]
+        let constructed = tag.is_constructed();
+        Self {
+            tag,
+            length,
+            constructed,
+        }
+    }
+
+    /// [`Tag`] of this header.
+    pub fn tag(&self) -> Tag {
+        self.tag
+    }
+
+    /// [`Length`] of this header.
+    pub fn length(&self) -> Length {
+        self.length
+    }
+
+    /// True if the [`Tag`] of this header has its constructed bit set.
+    pub fn is_constructed(&self) -> bool {
+        self.constructed
+    }
+
+    /// Copy of header with adjusted length.
+    pub fn with_length(&self, length: Length) -> Self {
+        Self {
+            tag: self.tag,
+            length,
+            constructed: self.constructed,
+        }
     }
 
     /// Peek forward in the reader, attempting to decode a [`Header`] at the current position.
@@ -56,7 +109,11 @@ impl<'a> Decode<'a> for Header {
         #[cfg(not(feature = "ber"))]
         debug_assert_eq!(is_constructed, tag.is_constructed());
 
-        Ok(Self { tag, length })
+        Ok(Self {
+            tag,
+            length,
+            constructed: is_constructed,
+        })
     }
 }
 
@@ -95,8 +152,8 @@ mod tests {
         assert_eq!(reader.position(), Length::ZERO);
 
         let header = Header::peek(&reader).expect("peeked tag");
-        assert_eq!(header.tag, Tag::Integer);
-        assert_eq!(header.length, Length::ONE);
+        assert_eq!(header.tag(), Tag::Integer);
+        assert_eq!(header.length(), Length::ONE);
         assert_eq!(reader.position(), Length::ZERO); // Position unchanged
     }
 
@@ -114,7 +171,7 @@ mod tests {
             }
         );
         assert_eq!(
-            header.length,
+            header.length(),
             Length::new_usize(0xFFFFFFFF).expect("u32 to fit")
         );
         assert_eq!(header.encoded_len(), Ok(Length::new(11)));
